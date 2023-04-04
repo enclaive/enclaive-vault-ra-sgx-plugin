@@ -1,16 +1,23 @@
-package sgx
+package vault_sgx_plugin
 
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/enclaive/vault-sgx-auth/attest"
+	vault "github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
 	"sort"
 	"strings"
 	"time"
+)
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+const (
+	mountPath = "auth/sgx-auth/login"
 )
 
 // backend wraps the backend framework and adds a map for storing key value pairs.
@@ -18,6 +25,12 @@ type backend struct {
 	*framework.Backend
 
 	//TODO this should be persisted
+	//  unknown property SealWrap
+	//	req.Storage.Put(ctx, &logical.StorageEntry{
+	//		Key:      "enclave/"+id,
+	//		Value:    mrenclave,
+	//		SealWrap: false,
+	//	})
 	enclaves map[string]string
 }
 
@@ -67,6 +80,37 @@ func newBackend() (*backend, error) {
 	return b, nil
 }
 
+func NewSgxAuth(request *attest.Request) *SgxAuth {
+	return &SgxAuth{request: request}
+}
+
+type SgxAuth struct {
+	request *attest.Request
+}
+
+func (s *SgxAuth) Login(ctx context.Context, client *vault.Client) (*vault.Secret, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	attestation, err := json.Marshal(s.request)
+	if err != nil {
+		return nil, err
+	}
+
+	loginData := map[string]interface{}{
+		"id":          s.request.Type,
+		"attestation": attestation,
+	}
+
+	resp, err := client.Logical().WriteWithContext(ctx, mountPath, loginData)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (b *backend) pathLogin() *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
@@ -90,9 +134,14 @@ func (b *backend) pathLogin() *framework.Path {
 }
 
 func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	id := data.Get("id").(string)
-	if id == "" {
-		return logical.ErrorResponse("id must be provided"), nil
+	if req.Connection == nil || req.Connection.ConnState == nil {
+		return logical.ErrorResponse("tls connection required"), nil
+	}
+
+	connState := req.Connection.ConnState
+
+	if connState.PeerCertificates == nil || len(connState.PeerCertificates) == 0 {
+		return logical.ErrorResponse("tls client certificate required"), nil
 	}
 
 	attestation := data.Get("attestation").(string)
@@ -100,14 +149,30 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 		return logical.ErrorResponse("attestation must be provided"), nil
 	}
 
-	mrsigner, ok := b.enclaves[id]
-	if !ok {
-		return nil, logical.ErrPermissionDenied
+	request := new(attest.Request)
+	rawRequest, err := base64.StdEncoding.DecodeString(attestation)
+	if err != nil {
+		return logical.ErrorResponse("attestation was not base64 encoded"), nil
 	}
 
-	_ = mrsigner
+	if err = json.Unmarshal(rawRequest, request); err != nil {
+		return logical.ErrorResponse("attestation was not base64 encoded"), nil
+	}
 
-	//FIXME check attestation here
+	id := data.Get("id").(string)
+	if id == "" {
+		return logical.ErrorResponse("id must be provided"), nil
+	}
+
+	measurement, ok := b.enclaves[id]
+	if !ok {
+		return logical.ErrorResponse("unknown enclave type"), nil
+	}
+
+	response, err := attest.Verify(connState.PeerCertificates[0], request, measurement)
+	if err != nil {
+		return logical.ErrorResponse("attestation failed"), nil
+	}
 
 	// Compose the response
 	resp := &logical.Response{
@@ -116,10 +181,12 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 				"attestation": attestation,
 			},
 			// Policies can be passed in as a parameter to the request
-			Policies: []string{"my-policy", "other-policy"},
+			Policies:        []string{"sgx/" + id},
+			NoDefaultPolicy: true,
 			Metadata: map[string]string{
-				"id": id,
+				"response": base64.StdEncoding.EncodeToString(response),
 			},
+
 			// Lease options can be passed in as parameters to the request
 			LeaseOptions: logical.LeaseOptions{
 				TTL:       30 * time.Second,

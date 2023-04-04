@@ -1,0 +1,3 @@
+path "secret/data/sgx/${ENCLAIVE_TYPE}" {
+  capabilities = ["read"]
+}

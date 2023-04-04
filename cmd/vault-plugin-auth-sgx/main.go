@@ -1,9 +1,9 @@
 package main
 
 import (
+	sgx "github.com/enclaive/vault-sgx-auth"
 	"os"
 
-	sgx "github.com/enclaive/vault-sgx-auth"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
