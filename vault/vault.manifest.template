@@ -1,0 +1,29 @@
+loader.entrypoint = "file:{{ gramine.libos }}"
+libos.entrypoint = "/app/premain-vault"
+
+loader.argv = [ "/usr/bin/vault", "server", "-config", "config.hcl" ]
+
+loader.log_level = "debug"
+loader.log_file = "log.txt"
+
+loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}"
+loader.env.HOME = "/root"
+loader.env.ENCLAIVE_DEPLOYMENT = { passthrough = true }
+
+fs.root.uri = "file:/"
+fs.start_dir = "/app"
+
+fs.mounts = [
+    { path = "/secrets/tmp", type = "tmpfs" },
+]
+
+sgx.enclave_size = "4G"
+sgx.max_threads = 32
+sgx.debug = false
+sgx.nonpie_binary = true
+sgx.allowed_files = [
+  "file:/",
+]
+sgx.remote_attestation = "dcap"
+sgx.isvprodid = 1
+sgx.isvsvn    = 2

@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	EnvEnclaveType   = "ENCLAIVE_TYPE"
+	EnvEnclaveName   = "ENCLAIVE_NAME"
 	EnvEnclaveServer = "ENCLAIVE_SERVER"
 
 	// VaultMount default mount path for KV v2 in dev mode
-	VaultMount = "secret"
+	VaultMount = "sgx-app"
 )
 
 func vaultClient(certificate *tls.Certificate) *vault.Client {
@@ -57,20 +57,30 @@ func vaultClient(certificate *tls.Certificate) *vault.Client {
 	return client
 }
 
-func vaultRequest(client *vault.Client, request *attest.Request) *attest.Secrets {
+func vaultRequest(client *vault.Client, request *attest.Request) (*attest.Secrets, *attest.TlsConfig) {
 	info, err := client.Auth().Login(context.Background(), auth.NewSgxAuth(request))
 	check(err)
 
-	//TODO use vault signed certificate
-	check(json.NewEncoder(os.Stdout).Encode(info.Auth.Metadata["response"]))
-
-	kvSecret, err := client.KVv2(VaultMount).Get(context.Background(), "sgx/"+request.Type)
+	kvSecret, err := client.KVv2(VaultMount).Get(context.Background(), request.Name)
 	check(err)
 
 	secrets := new(attest.Secrets)
 	check(json.Unmarshal([]byte(kvSecret.Data["provision"].(string)), secrets))
 
-	return secrets
+	path := fmt.Sprintf("sgx-pki/issue/%s", info.Auth.Metadata["domain"])
+	tlsSecret, err := client.Logical().WriteWithContext(context.Background(), path, map[string]interface{}{
+		"common_name": info.Auth.Metadata["domain"],
+		"format":      "der",
+	})
+	check(err)
+
+	tlsConfig := new(attest.TlsConfig)
+	tlsRaw, err := json.Marshal(tlsSecret.Data)
+	check(err)
+
+	check(json.Unmarshal(tlsRaw, tlsConfig))
+
+	return secrets, tlsConfig
 }
 
 func secretsProvision(secrets *attest.Secrets) {
@@ -92,35 +102,33 @@ func secretsProvision(secrets *attest.Secrets) {
 }
 
 func main() {
-	enclaveType := envConfig(EnvEnclaveType)
+	enclaveName := envConfig(EnvEnclaveName)
 
-	privateKey, err := generateEcKey()
+	privateKey, err := attest.GenerateEcKey()
 	check(err)
 
-	tlsCtx := &tlsContext{
-		publicKey:   privateKey.Public(),
-		privateKey:  privateKey,
-		enclaveType: enclaveType,
-	}
+	tlsCtx := attest.NewTlsContext(privateKey, enclaveName)
 
-	selfSignedCertificate, err := generateCert(tlsCtx)
+	selfSignedCertificate, err := attest.GenerateCert(tlsCtx)
 	check(err)
 
-	rawQuote := attest.NewGramineIssuer().Issue(selfSignedCertificate.Raw)
-
-	csr, err := generateCsr(tlsCtx)
-	check(err)
+	//rawQuote, err := attest.NewGramineIssuer().Issue(selfSignedCertificate.Raw)
+	//check(err)
+	rawQuote := []byte("yolo")
 
 	client := vaultClient(&tls.Certificate{
 		Certificate: [][]byte{selfSignedCertificate.Raw},
 		PrivateKey:  privateKey,
 	})
 
-	response := vaultRequest(client, &attest.Request{
-		Type:  enclaveType,
+	secrets, tlsConfig := vaultRequest(client, &attest.Request{
+		Name:  enclaveName,
 		Quote: rawQuote,
-		CSR:   csr.Raw,
 	})
 
-	secretsProvision(response)
+	//check(tlsConfig.Save("/secrets/tmp"))
+
+	json.NewEncoder(os.Stdout).Encode(secrets)
+	json.NewEncoder(os.Stdout).Encode(tlsConfig)
+	//secretsProvision(response)
 }

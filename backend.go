@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -66,11 +68,13 @@ func newBackend() (*backend, error) {
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
 				"login",
+				"attest",
 			},
 		},
 		Paths: framework.PathAppend(
 			[]*framework.Path{
 				b.pathLogin(),
+				b.pathAttest(),
 				b.pathUsersList(),
 			},
 			b.pathUsers(),
@@ -99,7 +103,7 @@ func (s *SgxAuth) Login(ctx context.Context, client *vault.Client) (*vault.Secre
 	}
 
 	loginData := map[string]interface{}{
-		"id":          s.request.Type,
+		"id":          s.request.Name,
 		"attestation": attestation,
 	}
 
@@ -128,6 +132,24 @@ func (b *backend) pathLogin() *framework.Path {
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.handleLogin,
 				Summary:  "Log in using en enclave id and attestation",
+			},
+		},
+	}
+}
+
+func (b *backend) pathAttest() *framework.Path {
+	return &framework.Path{
+		Pattern: "attest$",
+		Fields: map[string]*framework.FieldSchema{
+			"nonce": {
+				Type:        framework.TypeString,
+				Description: "freshness nonce",
+			},
+		},
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.handleAttest,
+				Summary:  "Get vault attestation",
 			},
 		},
 	}
@@ -166,13 +188,14 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 
 	measurement, ok := b.enclaves[id]
 	if !ok {
-		return logical.ErrorResponse("unknown enclave type"), nil
+		return logical.ErrorResponse("unknown enclave name"), nil
 	}
 
-	response, err := attest.Verify(connState.PeerCertificates[0], request, measurement)
-	if err != nil {
+	if err = attest.Verify(connState.PeerCertificates[0], request, measurement); err != nil {
 		return logical.ErrorResponse("attestation failed"), nil
 	}
+
+	domain := fmt.Sprintf("%s.app.%s.enclaive", measurement, os.Getenv("ENCLAIVE_DEPLOYMENT"))
 
 	// Compose the response
 	resp := &logical.Response{
@@ -181,10 +204,10 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 				"attestation": attestation,
 			},
 			// Policies can be passed in as a parameter to the request
-			Policies:        []string{"sgx/" + id},
+			Policies:        []string{"sgx-app/" + id},
 			NoDefaultPolicy: true,
 			Metadata: map[string]string{
-				"response": base64.StdEncoding.EncodeToString(response),
+				"domain": domain,
 			},
 
 			// Lease options can be passed in as parameters to the request
@@ -197,6 +220,28 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 	}
 
 	return resp, nil
+}
+
+func (b *backend) handleAttest(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	//nonce := data.Get("nonce").(string)
+	//if nonce == "" {
+	//	return logical.ErrorResponse("no nonce provided"), nil
+	//}
+
+	certificateHash := os.Getenv("ENCLAIVE_CERTIFICATE_HASH")
+	rawHash, err := hex.DecodeString(certificateHash)
+	if err != nil {
+		return logical.ErrorResponse("could not decode certificate hash to bytes"), nil
+	}
+
+	rawQuote, _ := attest.NewGramineIssuer().Issue(rawHash)
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"quote":            rawQuote,
+			"certificate_hash": certificateHash,
+		},
+	}, nil
 }
 
 func (b *backend) pathUsers() []*framework.Path {

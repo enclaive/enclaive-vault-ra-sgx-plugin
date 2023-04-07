@@ -16,13 +16,17 @@ func NewGramineIssuer() *GramineIssuer {
 
 type GramineIssuer struct{}
 
-func (i *GramineIssuer) Issue(data []byte) []byte {
+func (i *GramineIssuer) Issue(data []byte) ([]byte, error) {
 	hash := sha512.Sum512(data)
 
-	check(os.WriteFile(GramineUserReportData, hash[:], 0600))
+	if err := os.WriteFile(GramineUserReportData, hash[:], 0600); err != nil {
+		return nil, err
+	}
 
 	rawQuote, err := os.ReadFile(GramineQuote)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
-	return rawQuote
+	return rawQuote, nil
 }

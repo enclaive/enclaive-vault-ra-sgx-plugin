@@ -1,3 +1,7 @@
-path "secret/data/sgx/${ENCLAIVE_TYPE}" {
+path "sgx-app/data/${NAME}" {
   capabilities = ["read"]
+}
+
+path "sgx-pki/issue/${ROLE}" {
+  capabilities = ["read","create","update"]
 }

@@ -1,4 +1,4 @@
-package main
+package attest
 
 import (
 	"crypto"
@@ -18,22 +18,30 @@ var (
 
 	certificateTemplate = x509.Certificate{
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyAgreement,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth | x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
 )
 
-type tlsContext struct {
-	publicKey   crypto.PublicKey
-	privateKey  crypto.PrivateKey
-	enclaveType string
+type TlsContext struct {
+	PublicKey   crypto.PublicKey
+	PrivateKey  crypto.PrivateKey
+	EnclaveName string
 }
 
-func generateEcKey() (*ecdsa.PrivateKey, error) {
+func NewTlsContext(privateKey *ecdsa.PrivateKey, enclaveName string) *TlsContext {
+	return &TlsContext{
+		PublicKey:   privateKey.Public(),
+		PrivateKey:  privateKey,
+		EnclaveName: enclaveName,
+	}
+}
+
+func GenerateEcKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 
-func generateCert(ctx *tlsContext) (*x509.Certificate, error) {
+func GenerateCert(ctx *TlsContext) (*x509.Certificate, error) {
 	template := certificateTemplate
 	template.DNSNames = defaultDnsNames
 	template.IPAddresses = defaultIpAddresses
@@ -45,26 +53,13 @@ func generateCert(ctx *tlsContext) (*x509.Certificate, error) {
 	template.SerialNumber = big.NewInt(1)
 
 	template.Subject = pkix.Name{
-		CommonName: ctx.enclaveType,
+		CommonName: ctx.EnclaveName,
 	}
 
-	rawCertificate, err := x509.CreateCertificate(rand.Reader, &template, &template, ctx.publicKey, ctx.privateKey)
+	rawCertificate, err := x509.CreateCertificate(rand.Reader, &template, &template, ctx.PublicKey, ctx.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return x509.ParseCertificate(rawCertificate)
-}
-
-func generateCsr(ctx *tlsContext) (*x509.CertificateRequest, error) {
-	template := &x509.CertificateRequest{}
-	template.DNSNames = defaultDnsNames
-	template.IPAddresses = defaultIpAddresses
-
-	csr, err := x509.CreateCertificateRequest(rand.Reader, template, ctx.privateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return x509.ParseCertificateRequest(csr)
 }
