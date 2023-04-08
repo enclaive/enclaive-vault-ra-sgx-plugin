@@ -39,7 +39,7 @@ client:
 premain: premain-app premain-vault
 
 premain-app:
-	$(GOBUILD) -o ./premain cmd/premain-app/main.go
+	$(GOBUILD) -buildmode=pie -o ./premain cmd/premain-app/main.go
 
 premain-vault:
 	$(GOBUILD) -o ./vault/premain-vault cmd/premain-vault/main.go
@@ -48,8 +48,12 @@ start:
 	mkdir -p certs
 	vault server -dev -dev-tls -dev-tls-cert-dir=certs -dev-listen-address=0.0.0.0:8200 -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
-enclave: build client premain
-	cd vault/ && docker-compose build
+enclave: build client premain-vault
+	docker build -t enclaive/k8s-vault-sgx:latest --progress=plain vault/
+
+docker/%: premain-app
+	cp ./premain ./apps/$*/
+	docker build -t enclaive/k8s-vault-sgx/$*:latest --progress=plain apps/$*/
 
 clean:
 	rm -f ./vault/plugins/vault-plugin-auth-sgx

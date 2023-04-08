@@ -10,10 +10,10 @@ set -xo pipefail
 export VAULT_ADDR="https://127.0.0.1:8200"
 export VAULT_CACERT="${VAULT_CACERT:-certs/vault-ca.pem}"
 
-NAME="debug"
-MEASUREMENT="488f8327a9e0c66c25795f63e031bb96ad5a69b53f21409274f62699d3e08c7d"
+NAME="redis"
+MEASUREMENT="1b84298bc789748debbbb25db76a0bf85c983be4a9810ee734fd8aa3d3274f01"
 ATTESTATION="yolo"
-SECRET='{"environment": {"VAULT": "1"}, "files": {"/tmp/debug.txt":"aGVsbG8K"}, "argv": []}'
+SECRET='{"environment": {}, "files": {"/dev/attestation/keys/data":"c1ydwRokay1R4xZ3mPwd1w==","/dev/attestation/keys/logs":"nKz4dRYLWQBhkW9bzs6HQw=="}, "argv": []}'
 
 KEY_TYPE="ec"
 KEY_BITS="256"

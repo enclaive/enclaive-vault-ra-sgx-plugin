@@ -3,8 +3,8 @@ libos.entrypoint = "/app/premain-vault"
 
 loader.argv = [ "/usr/bin/vault", "server", "-config", "config.hcl" ]
 
-loader.log_level = "debug"
-loader.log_file = "log.txt"
+loader.log_level = "error"
+#loader.log_file = "log.txt"
 
 loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}"
 loader.env.HOME = "/root"
@@ -25,5 +25,3 @@ sgx.allowed_files = [
   "file:/",
 ]
 sgx.remote_attestation = "dcap"
-sgx.isvprodid = 1
-sgx.isvsvn    = 2

@@ -8,3 +8,4 @@
 /vault/plugins/
 /premain
 /client
+/apps/*/premain

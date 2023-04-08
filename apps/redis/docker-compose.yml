@@ -2,8 +2,8 @@ version: '2'
 
 services:
 
-  vault:
-    image: enclaive/k8s-vault-sgx:latest
+  redis:
+    image: enclaive/k8s-vault-sgx/redis:latest
     devices:
       - "/dev/sgx/enclave:/dev/sgx/enclave"
       - "/dev/sgx/enclave:/dev/sgx_enclave"
@@ -11,7 +11,7 @@ services:
     volumes:
       - type: volume
         target: /data
+      - type: volume
+        target: /logs
     ports:
-      - "8200:8200"
-    environment:
-      - ENCLAIVE_DEPLOYMENT=${ENCLAIVE_DEPLOYMENT}
+      - "6379:6379"

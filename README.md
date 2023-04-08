@@ -33,21 +33,19 @@ If not using dev-mode:
 
 ```bash
 make enclave
-
 # will output measurement, but can (insecurely) be retrieved later
 
 export ENCLAIVE_PCCS="https://global.acccache.azure.net"
 export ENCLAIVE_DEPLOYMENT=$(cat deployment.id)
-
-docker-compose -f vault/docker-compose.yml up -d -t 0
-
 export VAULT_CACERT="certs/attest.pem"
 export VAULT_ADDR="https://127.0.0.1:8200"
+
+docker-compose -f vault/docker-compose.yml up -d -t 0
 
 # get measurement for vault-sgx
 docker-compose -f vault/docker-compose.yml exec -T vault cat vault.sig | xxd -s 0x3c0 -l 32 -p -c 32
 # verify attestation, will request VAULT_ADDR/premain/attest and write cert to VAULT_CACERT
-./client verify -ref 57dfc81bfee343f41b4d425ade15b9a910aec222a519291614c02d8db78a30cb
+./client verify -ref d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
 
 # vault-cli is now using RA-TLS certificate from enclave
 
@@ -64,12 +62,18 @@ vault auth disable sgx-auth
 vault plugin deregister sgx-auth
 
 # only if not registered yet
-HASH=$(sha256sum vault/plugins/vault-plugin-auth-sgx | awk '{print $1}')
+HASH=$(docker-compose -f vault/docker-compose.yml exec -T vault sha256sum plugins/vault-plugin-auth-sgx | awk '{print $1}')
 vault plugin register -sha256="${HASH}" auth vault-plugin-auth-sgx
 
-# enable plugin and other engines
+# enable plugin and other engines, will create certs (Root-CA, Intermediate-CA, admin.client.deployment.enclaive)
 make enable
 
-# create entry for enclave
+# will output measurement, set it in client.sh MEASUREMENT with correct NAME
+make docker/redis
+
+# register enclave
 make create
+
+docker-compose -f apps/redis/docker-compose.yml up
+redis-cli --tls --cacert certs/sgx-ca.pem --cert certs/sgx-cert.pem --key certs/sgx-key.pem
 ```

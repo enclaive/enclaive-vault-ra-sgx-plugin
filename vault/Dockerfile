@@ -15,6 +15,8 @@ COPY ./premain-vault ./vault.manifest.template ./config.hcl ./entrypoint.sh ./
 RUN gramine-sgx-gen-private-key \
     && gramine-manifest -Darch_libdir=/lib/x86_64-linux-gnu vault.manifest.template vault.manifest \
     && gramine-sgx-sign --manifest vault.manifest --output vault.manifest.sgx
+
 VOLUME /data/
+EXPOSE 8200/tcp
 
 ENTRYPOINT [ "./entrypoint.sh" ]
