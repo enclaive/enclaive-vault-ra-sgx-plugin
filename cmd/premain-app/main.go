@@ -24,6 +24,22 @@ const (
 	VaultMount = "sgx-app"
 )
 
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func envConfig(name string) string {
+	value, ok := os.LookupEnv(name)
+
+	if !ok {
+		panic(fmt.Errorf("environment variable '%s' missing", name))
+	}
+
+	return value
+}
+
 func vaultClient(certificate *tls.Certificate) *vault.Client {
 	config := vault.DefaultConfig()
 
@@ -112,9 +128,8 @@ func main() {
 	selfSignedCertificate, err := attest.GenerateCert(tlsCtx)
 	check(err)
 
-	//rawQuote, err := attest.NewGramineIssuer().Issue(selfSignedCertificate.Raw)
-	//check(err)
-	rawQuote := []byte("yolo")
+	rawQuote, err := attest.NewGramineIssuer().Issue(selfSignedCertificate.Raw)
+	check(err)
 
 	client := vaultClient(&tls.Certificate{
 		Certificate: [][]byte{selfSignedCertificate.Raw},
@@ -126,9 +141,7 @@ func main() {
 		Quote: rawQuote,
 	})
 
-	//check(tlsConfig.Save("/secrets/tmp"))
+	check(tlsConfig.Save("/secrets/tmp"))
 
-	json.NewEncoder(os.Stdout).Encode(secrets)
-	json.NewEncoder(os.Stdout).Encode(tlsConfig)
-	//secretsProvision(response)
+	secretsProvision(secrets)
 }

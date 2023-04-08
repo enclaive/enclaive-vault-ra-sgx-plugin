@@ -1,15 +1,18 @@
 package attest
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"log"
-	"math/rand"
 	"os"
-	"path/filepath"
+)
+
+const (
+	Debug = false
 )
 
 var (
@@ -17,11 +20,13 @@ var (
 )
 
 func init() {
-	file, err := os.Create("plugin.log.txt")
-	if err != nil {
-		panic(err)
+	if Debug {
+		file, err := os.Create("plugin.log.txt")
+		if err != nil {
+			panic(err)
+		}
+		logger = log.New(file, "", log.LstdFlags|log.Lshortfile)
 	}
-	logger = log.New(file, "", log.LstdFlags|log.Lshortfile)
 }
 
 func check(err error) {
@@ -46,59 +51,46 @@ type Secrets struct {
 	Argv        []string          `json:"argv,omitempty"`
 }
 
-type TlsConfig struct {
-	CaChain     [][]byte `json:"ca_chain,omitempty"`
-	Certificate []byte   `json:"certificate,omitempty"`
-	PrivateKey  []byte   `json:"private_key,omitempty"`
-}
-
-func (c *TlsConfig) Save(prefix string) (err error) {
-	if c.CaChain != nil {
-		caChain := make([][]byte, len(c.CaChain))
-		for i, ca := range c.CaChain {
-			caChain[i] = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca})
-		}
-
-		err = os.WriteFile(filepath.Join(prefix, "ca.pem"), bytes.Join(caChain, []byte("")), 0400)
-		if err != nil {
-			return err
-		}
-	}
-
-	if c.Certificate != nil {
-		certificate := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Certificate})
-		err = os.WriteFile(filepath.Join(prefix, "cert.pem"), certificate, 0400)
-		if err != nil {
-			return err
-		}
-	}
-
-	if c.PrivateKey != nil {
-		privateKey := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: c.PrivateKey})
-		err = os.WriteFile(filepath.Join(prefix, "key.pem"), privateKey, 0400)
-		if err != nil {
-			return err
-		}
-	}
-
-	return
-}
-
 // Verify
 // TODO add nonce to quote generation and verification
-func Verify(certificate *x509.Certificate, request *Request, reference string) error {
-	logger.Print("Certificate:", string(pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certificate.Raw,
-	})))
-	rawRequest, _ := json.Marshal(request)
-	logger.Println("Request:", string(rawRequest))
-	logger.Println("Measurement:", reference)
-
-	// TODO implement verification
-	if int(rand.Float64()*10) <= 5 {
-		return errors.New("missing implementation")
-	} else {
-		return nil
+func Verify(hash [64]byte, quote []byte, reference string) error {
+	if Debug {
+		logger.Println("Measurement:", reference)
+		logger.Println("Quote:", base64.StdEncoding.EncodeToString(quote))
+		logger.Println("Hash:", hex.EncodeToString(hash[:]))
 	}
+
+	attested, err := verifyQuote(quote)
+	if err != nil {
+		if Debug {
+			logger.Println("Error:", err)
+		}
+		return err
+	}
+
+	if subtle.ConstantTimeCompare(attested.ReportData, hash[:]) == 0 {
+		return errors.New("report data did not match expected hash")
+	}
+
+	rawReference, err := hex.DecodeString(reference)
+	if err != nil {
+		if Debug {
+			logger.Println("Error:", err)
+		}
+		return err
+	}
+
+	if subtle.ConstantTimeCompare(attested.Identity.MrEnclave[:], rawReference) == 0 {
+		return errors.New("measurement did not match expected mrenclave")
+	}
+
+	if Debug {
+		rawAttested, _ := json.Marshal(attested)
+		logger.Println("Attested:", string(rawAttested))
+		logger.Println("MRENCLAVE:", hex.EncodeToString(attested.Identity.MrEnclave[:]))
+		logger.Println("MRSIGNER:", hex.EncodeToString(attested.Identity.MrSigner[:]))
+		logger.Println("DATA:", hex.EncodeToString(hash[:]))
+	}
+
+	return nil
 }

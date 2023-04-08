@@ -11,22 +11,22 @@ export VAULT_ADDR="https://127.0.0.1:8200"
 export VAULT_CACERT="${VAULT_CACERT:-certs/vault-ca.pem}"
 
 NAME="debug"
-MEASUREMENT="123123123123"
+MEASUREMENT="488f8327a9e0c66c25795f63e031bb96ad5a69b53f21409274f62699d3e08c7d"
 ATTESTATION="yolo"
 SECRET='{"environment": {"VAULT": "1"}, "files": {"/tmp/debug.txt":"aGVsbG8K"}, "argv": []}'
 
 KEY_TYPE="ec"
 KEY_BITS="256"
 
-if [[ -f deployment.uuid ]]
+if [[ -f deployment.id ]]
 then
-  DEPLOYMENT_DOMAIN="$(cat deployment.uuid).enclaive"
+  DEPLOYMENT_DOMAIN="$(cat deployment.id).enclaive"
 fi
 
 function setup() {
-  if [[ ! -f deployment.uuid ]]
+  if [[ ! -f deployment.id ]]
   then
-    python -c 'import uuid; print(uuid.uuid4())' > deployment.uuid
+    python -c 'import uuid; print(str(uuid.uuid4()).split("-")[0])' > deployment.id
   fi
 }
 
@@ -86,12 +86,32 @@ function enable() {
     ttl=43800h \
     | tee /dev/stderr \
     | jq -r '.data.certificate' > certs/sgx-ca.pem
-
   vault write -format=json \
     sgx-pki/intermediate/set-signed \
     certificate=@certs/sgx-ca.pem
-
   rm certs/sgx-ca-intermediate.csr
+
+  # generate external client cert
+  vault write -format=json \
+    sgx-pki/roles/"admin.client.${DEPLOYMENT_DOMAIN}" \
+    allowed_domains="admin.client.${DEPLOYMENT_DOMAIN}" \
+    allow_bare_domains=true \
+    allow_subdomains=false \
+    allow_localhost=false \
+    ttl=8760h \
+    key_type="${KEY_TYPE}" \
+    key_bits="${KEY_BITS}"
+
+  vault write -format=json \
+    sgx-pki/issue/"admin.client.${DEPLOYMENT_DOMAIN}" \
+    common_name="admin.client.${DEPLOYMENT_DOMAIN}" \
+    | jq '.data' \
+    > certs/sgx-client.json
+
+  jq -r '.certificate' certs/sgx-client.json > certs/sgx-cert.pem
+  jq -r '.private_key' certs/sgx-client.json > certs/sgx-key.pem
+  chmod 0600 certs/sgx-key.pem
+  rm certs/sgx-client.json
 }
 
 function create() {
@@ -104,7 +124,7 @@ function create() {
     -mount=sgx-app "${NAME}" provision="${SECRET}"
 
   # also could use NAME to be less specific
-  APP_DOMAIN="${MEASUREMENT}.app.${DEPLOYMENT_DOMAIN}"
+  APP_DOMAIN="${MEASUREMENT:0:32}.app.${DEPLOYMENT_DOMAIN}"
 
   # create a pki role
   vault write -format=json \

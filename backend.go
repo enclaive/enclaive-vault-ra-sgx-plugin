@@ -2,9 +2,9 @@ package vault_sgx_plugin
 
 import (
 	"context"
+	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,7 +74,6 @@ func newBackend() (*backend, error) {
 		Paths: framework.PathAppend(
 			[]*framework.Path{
 				b.pathLogin(),
-				b.pathAttest(),
 				b.pathUsersList(),
 			},
 			b.pathUsers(),
@@ -137,24 +136,6 @@ func (b *backend) pathLogin() *framework.Path {
 	}
 }
 
-func (b *backend) pathAttest() *framework.Path {
-	return &framework.Path{
-		Pattern: "attest$",
-		Fields: map[string]*framework.FieldSchema{
-			"nonce": {
-				Type:        framework.TypeString,
-				Description: "freshness nonce",
-			},
-		},
-		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.handleAttest,
-				Summary:  "Get vault attestation",
-			},
-		},
-	}
-}
-
 func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.Connection == nil || req.Connection.ConnState == nil {
 		return logical.ErrorResponse("tls connection required"), nil
@@ -191,11 +172,12 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 		return logical.ErrorResponse("unknown enclave name"), nil
 	}
 
-	if err = attest.Verify(connState.PeerCertificates[0], request, measurement); err != nil {
+	hash := sha512.Sum512(connState.PeerCertificates[0].Raw)
+	if err = attest.Verify(hash, request.Quote, measurement); err != nil {
 		return logical.ErrorResponse("attestation failed"), nil
 	}
 
-	domain := fmt.Sprintf("%s.app.%s.enclaive", measurement, os.Getenv("ENCLAIVE_DEPLOYMENT"))
+	domain := fmt.Sprintf("%s.app.%s.enclaive", measurement[:32], os.Getenv("ENCLAIVE_DEPLOYMENT"))
 
 	// Compose the response
 	resp := &logical.Response{
@@ -220,28 +202,6 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 	}
 
 	return resp, nil
-}
-
-func (b *backend) handleAttest(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	//nonce := data.Get("nonce").(string)
-	//if nonce == "" {
-	//	return logical.ErrorResponse("no nonce provided"), nil
-	//}
-
-	certificateHash := os.Getenv("ENCLAIVE_CERTIFICATE_HASH")
-	rawHash, err := hex.DecodeString(certificateHash)
-	if err != nil {
-		return logical.ErrorResponse("could not decode certificate hash to bytes"), nil
-	}
-
-	rawQuote, _ := attest.NewGramineIssuer().Issue(rawHash)
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"quote":            rawQuote,
-			"certificate_hash": certificateHash,
-		},
-	}, nil
 }
 
 func (b *backend) pathUsers() []*framework.Path {

@@ -1,3 +1,10 @@
 .DS_Store
 .idea
 .vscode
+
+/certs/
+/deployment.id
+/vault/premain-vault
+/vault/plugins/
+/premain
+/client
