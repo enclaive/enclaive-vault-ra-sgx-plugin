@@ -29,6 +29,8 @@ make create
 make login
 ```
 
+## SGX Deployment
+
 If not using dev-mode:
 
 ```bash
