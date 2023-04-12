@@ -15,3 +15,5 @@ services:
         target: /logs
     ports:
       - "6379:6379"
+    environment:
+      - ENCLAIVE_SERVER="https://172.17.0.1:8200"

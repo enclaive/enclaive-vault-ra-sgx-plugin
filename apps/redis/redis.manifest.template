@@ -9,7 +9,7 @@ loader.log_level = "error"
 loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}"
 
 loader.env.ENCLAIVE_NAME = "redis"
-loader.env.ENCLAIVE_SERVER = "https://172.17.0.1:8200"
+loader.env.ENCLAIVE_SERVER = { passthrough = true }
 
 sys.enable_sigterm_injection = true
 
