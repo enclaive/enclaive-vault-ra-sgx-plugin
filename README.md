@@ -36,6 +36,7 @@ If using k8s:
 ```bash
 make pccs
 
+make build
 make premain-vault
 docker build -t enclaive/hashicorp-vault-sgx:k8s --progress=plain --no-cache vault/
 # Measurement: d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
