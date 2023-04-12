@@ -31,6 +31,33 @@ make login
 
 ## SGX Deployment
 
+If using k8s:
+
+```bash
+make pccs
+
+make premain-vault
+docker build -t enclaive/hashicorp-vault-sgx:k8s --progress=plain --no-cache vault/
+# Measurement: d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
+
+make premain-app
+cp ./premain ./apps/redis/
+docker build -t enclaive/redis-sgx:k8s --progress=plain --no-cache apps/redis/
+# Measurement: d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
+
+docker push enclaive/sgx-pccs:latest
+docker push enclaive/hashicorp-vault-sgx:k8s
+docker push enclaive/redis-sgx:k8s
+
+# set APIKEY in pccs.yaml
+scp pccs/pccs.yaml vault/vault.yaml apps/redis/redis.yaml k8s-host:
+
+kubectl apply -f ./pccs.yaml
+kubectl apply -f ./redis.yaml
+kubectl get pods # Status: Init:0/1
+kubectl apply -f ./vault.yaml
+```
+
 If not using dev-mode:
 
 ```bash

@@ -3,7 +3,7 @@ version: '2'
 services:
 
   redis:
-    image: enclaive/k8s-vault-sgx/redis:latest
+    image: enclaive/redis-sgx:k8s
     devices:
       - "/dev/sgx/enclave:/dev/sgx/enclave"
       - "/dev/sgx/enclave:/dev/sgx_enclave"

@@ -49,11 +49,14 @@ start:
 	vault server -dev -dev-tls -dev-tls-cert-dir=certs -dev-listen-address=0.0.0.0:8200 -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
 enclave: build client premain-vault
-	docker build -t enclaive/k8s-vault-sgx:latest --progress=plain vault/
+	docker build -t enclaive/hashicorp-vault-sgx:k8s --progress=plain vault/
+
+pccs:
+	docker build -t enclaive/sgx-pccs:latest --progress=plain pccs/
 
 docker/%: premain-app
 	cp ./premain ./apps/$*/
-	docker build -t enclaive/k8s-vault-sgx/$*:latest --progress=plain apps/$*/
+	docker build -t enclaive/$*-sgx:k8s --progress=plain apps/$*/
 
 clean:
 	rm -f ./vault/plugins/vault-plugin-auth-sgx
@@ -62,4 +65,4 @@ clean:
 fmt:
 	go fmt $$(go list ./...)
 
-.PHONY: build clean fmt start enable client premain premain-app premain-vault enclave
+.PHONY: build clean fmt start enable client premain premain-app premain-vault enclave pccs
