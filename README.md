@@ -40,7 +40,7 @@ make vault
 # Measurement: d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
 
 make docker/redis
-# Measurement: d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
+# Measurement: 3e3940963ad38c71c4bd5ee82f6e206d1b6c78a91e13cebb96dde5acb0e160e1
 
 docker push enclaive/sgx-pccs:latest
 docker push enclaive/hashicorp-vault-sgx:k8s
