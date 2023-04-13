@@ -36,7 +36,7 @@ If using k8s:
 ```bash
 make pccs
 
-make enclave
+make vault
 # Measurement: d9028fa243c69c6ef28b335c57e5a70dcfc0caa01b4c3bfa5a1554482501a4ae
 
 make docker/redis
@@ -58,7 +58,7 @@ kubectl apply -f ./vault.yaml
 If not using dev-mode:
 
 ```bash
-make enclave
+make vault
 # will output measurement, but can (insecurely) be retrieved later
 
 export ENCLAIVE_PCCS="https://global.acccache.azure.net"

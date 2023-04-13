@@ -48,7 +48,7 @@ start:
 	mkdir -p certs
 	vault server -dev -dev-tls -dev-tls-cert-dir=certs -dev-listen-address=0.0.0.0:8200 -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
-enclave: build client premain-vault
+vault: build client premain-vault
 	docker build -t enclaive/hashicorp-vault-sgx:k8s --progress=plain vault/
 
 pccs:
@@ -65,4 +65,4 @@ clean:
 fmt:
 	go fmt $$(go list ./...)
 
-.PHONY: build clean fmt start enable client premain premain-app premain-vault enclave pccs
+.PHONY: build clean fmt start enable client premain premain-app premain-vault vault pccs
