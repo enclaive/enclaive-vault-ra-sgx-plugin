@@ -14,4 +14,4 @@ services:
     ports:
       - "8200:8200"
     environment:
-      - ENCLAIVE_DEPLOYMENT=${ENCLAIVE_DEPLOYMENT}
+      - ENCLAIVE_NAMESPACE=${ENCLAIVE_NAMESPACE}

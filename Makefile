@@ -16,19 +16,13 @@ GOBUILD := CGO_ENABLED=0 GOOS=$(OS) GOARCH="$(GOARCH)" go build
 
 all: fmt build
 
-setup:
-	./client.sh setup
-
 enable:
 	./client.sh enable
 
 create:
 	./client.sh create
 
-login:
-	./client.sh login
-
-build: setup
+build:
 	$(GOBUILD) -o vault/plugins/vault-plugin-auth-sgx cmd/vault-plugin-auth-sgx/main.go
 	strip vault/plugins/vault-plugin-auth-sgx
 	upx -1 vault/plugins/vault-plugin-auth-sgx

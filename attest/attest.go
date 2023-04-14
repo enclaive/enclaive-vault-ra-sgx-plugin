@@ -29,12 +29,6 @@ func init() {
 	}
 }
 
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 type Request struct {
 	Name  string
 	Quote []byte

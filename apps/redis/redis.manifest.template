@@ -8,7 +8,7 @@ loader.log_level = "error"
 
 loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}"
 
-loader.env.ENCLAIVE_NAME = "redis"
+loader.env.ENCLAIVE_NAME = "enclaive-redis-sgx"
 loader.env.ENCLAIVE_SERVER = { passthrough = true }
 
 sys.enable_sigterm_injection = true
@@ -28,7 +28,7 @@ fs.mounts = [
     { path = "/var/log/redis",    uri = "file:/logs", type = "encrypted", key_name = "logs" },
 ]
 
-sgx.enclave_size = "1G"
+sgx.enclave_size = "2G"
 sgx.max_threads = 32
 sgx.debug = false
 sgx.allowed_files = [

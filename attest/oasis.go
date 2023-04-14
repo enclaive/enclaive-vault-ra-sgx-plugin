@@ -4,67 +4,26 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/oasisprotocol/oasis-core/go/common/sgx"
 	"github.com/oasisprotocol/oasis-core/go/common/sgx/pcs"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"strings"
 	"time"
-)
-
-var (
-	pccsUrlBase string
 )
 
 //goland:noinspection GoUnusedConst
 const (
-	envEnclaivePccs    = "ENCLAIVE_PCCS"
-	pathSgxDefaultQcnl = "/etc/sgx_default_qcnl.conf"
+	pccsUrlBase = "https://api.trustedservices.intel.com/sgx/certification/v4"
 
-	pccsPathBase       = "/sgx/certification/v4"
 	pccsPathPckCrl     = "/pckcrl?ca=platform"
 	pccsPathTcb        = "/tcb"
 	pccsPathQeIdentity = "/qe/identity"
 	pccsPathRootCaCrl  = "/rootcacrl"
 
-	pccsHeaderCrlChain     = "SGX-PCK-CRL-Issuer-Chain"
-	pccsHeaderTcbChain     = "SGX-TCB-Info-Issuer-Chain"
-	pccsHeaderEnclaveChain = "SGX-Enclave-Identity-Issuer-Chain"
+	pccsHeaderCrlChain = "SGX-PCK-CRL-Issuer-Chain"
+	pccsHeaderTcbChain = "TCB-Info-Issuer-Chain"
 )
-
-func init() {
-	pccsUrlBase = os.Getenv(envEnclaivePccs)
-
-	if pccsUrlBase == "" {
-		data, err := os.ReadFile(pathSgxDefaultQcnl)
-		if err != nil {
-			fmt.Printf("configure PCCS via '%s' or configure in '%s'", envEnclaivePccs, pathSgxDefaultQcnl)
-			panic(err)
-		}
-
-		var config map[string]interface{}
-		if err = json.Unmarshal(data, &config); err != nil {
-			fmt.Printf("error parsing '%s'", pathSgxDefaultQcnl)
-			panic(err)
-		}
-
-		var ok bool
-		pccsUrlBase, ok = config["pccs_url"].(string)
-		if !ok {
-			fmt.Println("pccs_url was not a string")
-			panic(err)
-		}
-
-		if strings.HasSuffix(pccsUrlBase, "/") {
-			pccsUrlBase = strings.TrimSuffix(pccsUrlBase, "/")
-		}
-	} else {
-		pccsUrlBase += pccsPathBase
-	}
-}
 
 func requestPccs(path string, query url.Values, out interface{}) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, pccsUrlBase+path, nil)
@@ -123,7 +82,9 @@ func verifyQuote(rawQuote []byte) (*sgx.VerifiedQuote, error) {
 	var err error
 
 	var quote pcs.Quote
-	check(quote.UnmarshalBinary(rawQuote))
+	if err = quote.UnmarshalBinary(rawQuote); err != nil {
+		return nil, err
+	}
 
 	quoteSignature, ok := quote.Signature.(*pcs.QuoteSignatureECDSA_P256)
 	if !ok {
@@ -137,10 +98,14 @@ func verifyQuote(rawQuote []byte) (*sgx.VerifiedQuote, error) {
 	}
 
 	pckInfo, err := quoteSignature.VerifyPCK(time.Now())
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	tcbBundle, err := getTcbBundle(pckInfo.FMSPC)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	quotePolicy := &pcs.QuotePolicy{
 		Disabled:                   false,
@@ -149,7 +114,9 @@ func verifyQuote(rawQuote []byte) (*sgx.VerifiedQuote, error) {
 	}
 
 	attested, err := quote.Verify(quotePolicy, time.Now(), tcbBundle)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
 	return attested, nil
 }

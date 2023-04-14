@@ -2,10 +2,8 @@ package main
 
 import (
 	"crypto/sha512"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"github.com/enclaive/vault-sgx-auth/attest"
 	"github.com/urfave/cli/v2"
@@ -29,39 +27,6 @@ var (
 	valueAttestationMeasurement string
 	valueVaultAddress           string
 )
-
-func certFromFile(path string) (*x509.Certificate, error) {
-	rawCertificate, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	blockCertificate, rest := pem.Decode(rawCertificate)
-	if blockCertificate == nil || len(rest) != 0 {
-		return nil, errors.New("failed parsing certificate as pem")
-	}
-
-	certificate, err := x509.ParseCertificate(blockCertificate.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return certificate, nil
-}
-
-func clientFromCert(certificate *x509.Certificate) (*http.Client, error) {
-	certPool := x509.NewCertPool()
-	certPool.AddCert(certificate)
-
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig.RootCAs = certPool
-
-	client := &http.Client{
-		Transport: transport,
-	}
-
-	return client, nil
-}
 
 func verify(cCtx *cli.Context) error {
 	transport := http.DefaultTransport.(*http.Transport).Clone()

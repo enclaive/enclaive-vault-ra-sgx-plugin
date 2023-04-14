@@ -10,25 +10,14 @@ set -xo pipefail
 export VAULT_ADDR="https://127.0.0.1:8200"
 export VAULT_CACERT="${VAULT_CACERT:-certs/vault-ca.pem}"
 
-NAME="redis"
-MEASUREMENT="1b84298bc789748debbbb25db76a0bf85c983be4a9810ee734fd8aa3d3274f01"
-ATTESTATION="yolo"
+NAME="enclaive-redis-sgx"
+MEASUREMENT="5cd731b2990478b4542eb9f9f362f3e8de8845fa2e19146737f11ded92298a66"
 SECRET='{"environment": {}, "files": {"/dev/attestation/keys/data":"c1ydwRokay1R4xZ3mPwd1w==","/dev/attestation/keys/logs":"nKz4dRYLWQBhkW9bzs6HQw=="}, "argv": []}'
 
 KEY_TYPE="ec"
 KEY_BITS="256"
 
-if [[ -f deployment.id ]]
-then
-  DEPLOYMENT_DOMAIN="$(cat deployment.id).enclaive"
-fi
-
-function setup() {
-  if [[ ! -f deployment.id ]]
-  then
-    python -c 'import uuid; print(str(uuid.uuid4()).split("-")[0])' > deployment.id
-  fi
-}
+DEPLOYMENT_DOMAIN="${ENCLAIVE_NAMESPACE}.svc.cluster.local"
 
 function enable() {
   vault secrets enable \
@@ -46,7 +35,7 @@ function enable() {
     -path=sgx-pki pki \
     || echo "Already enabled sgx-pki"
 
-  VAULT_DOMAIN="vault.${DEPLOYMENT_DOMAIN}"
+  VAULT_DOMAIN="enclaive-vault-sgx.${DEPLOYMENT_DOMAIN}"
 
   # configure ca
   vault write -format=json \
@@ -93,8 +82,8 @@ function enable() {
 
   # generate external client cert
   vault write -format=json \
-    sgx-pki/roles/"admin.client.${DEPLOYMENT_DOMAIN}" \
-    allowed_domains="admin.client.${DEPLOYMENT_DOMAIN}" \
+    sgx-pki/roles/"client.sgx.enclaive" \
+    allowed_domains="client.sgx.enclaive" \
     allow_bare_domains=true \
     allow_subdomains=false \
     allow_localhost=false \
@@ -103,8 +92,8 @@ function enable() {
     key_bits="${KEY_BITS}"
 
   vault write -format=json \
-    sgx-pki/issue/"admin.client.${DEPLOYMENT_DOMAIN}" \
-    common_name="admin.client.${DEPLOYMENT_DOMAIN}" \
+    sgx-pki/issue/"client.sgx.enclaive" \
+    common_name="client.sgx.enclaive" \
     | jq '.data' \
     > certs/sgx-client.json
 
@@ -123,8 +112,7 @@ function create() {
   vault kv put -format=json \
     -mount=sgx-app "${NAME}" provision="${SECRET}"
 
-  # also could use NAME to be less specific
-  APP_DOMAIN="${MEASUREMENT:0:32}.app.${DEPLOYMENT_DOMAIN}"
+  APP_DOMAIN="${NAME}.${DEPLOYMENT_DOMAIN}"
 
   # create a pki role
   vault write -format=json \
@@ -143,18 +131,9 @@ function create() {
     < <(env -i NAME="${NAME}" ROLE="${APP_DOMAIN}" envsubst < vault.sgx.policy.template)
 }
 
-function login() {
-  vault write -format=json \
-		-client-key=certs/vault-key.pem \
-		-client-cert=certs/vault-cert.pem \
-		auth/sgx-auth/login id="${NAME}" attestation="${ATTESTATION}"
-}
-
 case "${COMMAND}" in
-  setup)  setup ;;
   enable) enable ;;
   create) create ;;
-  login)  login ;;
   *)
     echo "Unknown command: ${COMMAND}"
     exit 1

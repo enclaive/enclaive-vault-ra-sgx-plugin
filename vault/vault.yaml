@@ -11,8 +11,8 @@ spec:
   - name: vault
     image: docker.io/enclaive/hashicorp-vault-sgx:k8s
     env:
-      - name: ENCLAIVE_DEPLOYMENT
-        value: "demo"
+      - name: ENCLAIVE_NAMESPACE
+        value: "default"
     volumeMounts:
     - mountPath: /etc/sgx_default_qcnl.conf
       subPath: sgx_default_qcnl.conf
@@ -29,6 +29,7 @@ spec:
       privileged: true
     ports:
       - containerPort: 8200
+    imagePullPolicy: Always
   volumes:
   - name: qcnl-conf
     configMap:

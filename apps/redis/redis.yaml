@@ -35,6 +35,7 @@ spec:
       privileged: true
     ports:
       - containerPort: 6379
+    imagePullPolicy: Always
   volumes:
   - name: qcnl-conf
     configMap:

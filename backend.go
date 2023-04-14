@@ -68,7 +68,6 @@ func newBackend() (*backend, error) {
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
 				"login",
-				"attest",
 			},
 		},
 		Paths: framework.PathAppend(
@@ -177,7 +176,7 @@ func (b *backend) handleLogin(ctx context.Context, req *logical.Request, data *f
 		return logical.ErrorResponse("attestation failed"), nil
 	}
 
-	domain := fmt.Sprintf("%s.app.%s.enclaive", measurement[:32], os.Getenv("ENCLAIVE_DEPLOYMENT"))
+	domain := fmt.Sprintf("%s.%s.svc.cluster.local", id, os.Getenv("ENCLAIVE_NAMESPACE"))
 
 	// Compose the response
 	resp := &logical.Response{
