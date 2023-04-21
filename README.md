@@ -47,7 +47,7 @@ docker push enclaive/hashicorp-vault-sgx:k8s
 docker push enclaive/redis-sgx:k8s
 
 # set APIKEY in pccs.yaml
-scp pccs/pccs.yaml vault/vault.yaml apps/redis/redis.yaml k8s-host:
+scp pccs/pccs.yaml vault/vault.yaml apps/redis/redis.yaml apps/redis/redis-cli.yaml k8s-host:
 
 export ENCLAIVE_NAMESPACE="default"
 export VAULT_CACERT="certs/attest.pem"
@@ -68,26 +68,28 @@ make client
 
 # vault-cli is now using RA-TLS certificate from enclave
 
+# if using local vault binary
+export PATH="${PATH}:${PWD}"
+
 vault operator init -key-shares=1 -key-threshold=1
-> Unseal Key 1: NuOdkesZvcOprMJf3ktr6A/kt6RwYBekTgPgx0UW+/w=
-> Initial Root Token: hvs.NxFQYAJTnrW2uv1Rrk0F03ar
+> Unseal Key 1: 5dpPMXx7ce4CadUYCxsCax3urT5r7wApoClajs+2/LA=
+> Initial Root Token: hvs.XlG6nCfIr5YT5or03tYXpRiG
 
 vault operator unseal
 vault login
 
-docker pull enclaive/hashicorp-vault-sgx:k8s
-HASH=$(docker run --rm -it --entrypoint sha256sum enclaive/hashicorp-vault-sgx:k8s plugins/vault-plugin-auth-sgx | awk '{print $1}')
-vault plugin register -sha256="${HASH}" auth vault-plugin-auth-sgx
+vault plugin register -sha256="f4a2ad37c5177baaaf8559a80a2edca3e158c1b9161e1274e7289e6628d1745e" auth vault-plugin-auth-sgx
 
 # enable plugin and other engines, will create certs (Root-CA, Intermediate-CA, admin.client.deployment.enclaive)
-make enable
+./client.sh enable
 
 # register enclave, set measurement in client.sh
-make create
+./client.sh create
 
 fg # ctrl+c kubectl port-forward
 
-kubectl port-forward svc/enclaive-redis-sgx 6379:6379 &
-
-redis-cli --tls --cacert certs/sgx-ca.pem --cert certs/sgx-cert.pem --key certs/sgx-key.pem
+kubectl apply -f ./redis-cli.yaml
+kubectl cp certs/ enclaive-redis-cli:/data/
+kubectl exec -it enclaive-redis-cli -- bash
+redis-cli -h enclaive-redis-sgx --tls --cacert certs/sgx-ca.pem --cert certs/sgx-cert.pem --key certs/sgx-key.pem
 ```

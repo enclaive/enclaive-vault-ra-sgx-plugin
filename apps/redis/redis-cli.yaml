@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: enclaive-redis-cli
+  namespace: default
+spec:
+  nodeName: node6
+  containers:
+  - name: redis
+    image: docker.io/redis:7.0.10
+    command: ["tail", "-f", "/dev/null"]
