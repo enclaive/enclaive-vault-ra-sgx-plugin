@@ -18,7 +18,7 @@ fs.mounts = [
 ]
 
 sgx.enclave_size = "4G"
-sgx.max_threads = 32
+sgx.max_threads = 64
 sgx.debug = false
 sgx.nonpie_binary = true
 sgx.allowed_files = [
