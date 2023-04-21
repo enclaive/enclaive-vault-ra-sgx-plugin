@@ -37,7 +37,7 @@ If using k8s:
 make pccs
 
 make vault
-# Measurement: e211ba4d0a996136d1131f8b837ea20758a396a732f5123d71d22b544f4ff240
+# Measurement: d5b93e4c47c4ad5e5c65ebe9fc2fc1383ee7d07152c6c70de85d2981bf83144e
 
 make docker/redis
 # Measurement: 5cd731b2990478b4542eb9f9f362f3e8de8845fa2e19146737f11ded92298a66
@@ -64,7 +64,7 @@ kubectl port-forward svc/enclaive-vault-sgx 8200:8200 &
 make client
 
 # verify attestation, will request VAULT_ADDR/premain/attest and write cert to VAULT_CACERT
-./client verify -ref e211ba4d0a996136d1131f8b837ea20758a396a732f5123d71d22b544f4ff240
+./client verify -ref d5b93e4c47c4ad5e5c65ebe9fc2fc1383ee7d07152c6c70de85d2981bf83144e
 
 # vault-cli is now using RA-TLS certificate from enclave
 
