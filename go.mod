@@ -11,3 +11,5 @@ require (
 	github.com/urfave/cli/v2 v2.25.1
 	golang.org/x/sys v0.6.0
 )
+
+replace github.com/oasisprotocol/oasis-core/go => ./attest/oasis
