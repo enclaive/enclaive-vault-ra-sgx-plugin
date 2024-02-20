@@ -1,4 +1,4 @@
-# Vault SGX Plugin
+# Vault Remote Attestation Plugin using Intel SGX
 
 Login to vault using SGX attestation.
 
