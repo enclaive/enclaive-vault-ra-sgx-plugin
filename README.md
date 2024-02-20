@@ -1,6 +1,6 @@
 # Vault Remote Attestation Plugin using Intel SGX
 
-The plugin enriches the HashiCorp Key and Identity Management to deal with SGX remote attestation. The plug-in implements Intel's DCAP remote attestation protocol. The HahsiCorp Vault can run both enclaved and non-enclaved workloads, enforce access policies, and provision workload with secrets with the addition that now the workload is cryptographically authenticated. By running the HashiCorp Vault in an enclave, secret and identity management is encrypted while in use. (By default, Vault encrypts the communication and the secrets at rest through Shamir's secret sharing.)
+The plugin enriches the HashiCorp Key and Identity Management to deal with SGX remote attestation. The plug-in implements Intel's DCAP remote attestation protocol. The HahsiCorp Vault can run both enclaved and non-enclaved workloads, enforce access policies, and provision workload with secrets with the addition that now the workload is cryptographically authenticated. By running the HashiCorp Vault in an enclave (see [enclaive-docker-hashicorp-vault repo](https://github.com/enclaive/enclaive-docker-hashicorp-vault-sgx)), secret and identity management is encrypted while in use. (By default, Vault encrypts the communication and the secrets at rest through Shamir's secret sharing.)
 
 ## Usage
 
