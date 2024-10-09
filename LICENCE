@@ -1,0 +1,36 @@
+# Business Source License 1.1
+
+Licensor: enclaive GmbH
+Licensed Work: Vault attestation plugin with Intel SGX support
+Change Date: 10 years
+
+---
+
+## Terms
+
+The Licensed Work is provided under the **Business Source License (BSL)**, version 1.1, by the Licensor. Under this license, you may use the Licensed Work in accordance with the following terms:
+
+1. **Non-Production Use**:
+   You are free to download, modify, and use the Licensed Work for non-production purposes, including testing, evaluation, or development.
+   
+2. **Production Use Restrictions**:
+   You are not permitted to use the Licensed Work in production environments, commercial settings, or any environments with revenue-generating activities, unless you obtain a commercial license from the Licensor.
+
+3. **Change Date**:
+   On the Change Date, as specified above, the Licensed Work will automatically convert to the **GNU General Public License v2.0 or later**. From that date, you may use, modify, and distribute the Licensed Work under the terms of the GPL.
+
+4. **Commercial License**:
+   If you wish to use the Licensed Work in production or commercial settings before the Change Date, you must purchase a commercial license from the Licensor.
+
+5. **Disclaimer**:
+   THE LICENSED WORK IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS IN THE LICENSED WORK.
+
+For more details on the Business Source License, visit: https://mariadb.com/bsl-faq/
+
+---
+
+## Contact
+
+If you require a commercial license or have any questions regarding this license, please contact:
+
+[Insert Licensor Contact Information]
